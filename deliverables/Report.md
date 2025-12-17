@@ -2,13 +2,13 @@
 
 **December 2025**
 
+**GitHub Repository:** [https://github.com/skaplunucu/CV_HW3](https://github.com/skaplunucu/CV_HW3)
+
 ---
 
 ## Part 1: Face Segmentation
 
-This section presents the results of face segmentation experiments using classical and modern methods on the CelebAMask-HQ dataset.
-
-### 1. Classical Segmentation (HSV + GMM)
+### 1.1 Classical Segmentation (HSV + GMM)
 
 **Method Overview:**
 Gaussian Mixture Model (GMM) with 19 components operating on HSV color space and spatial coordinates. This unsupervised clustering approach groups pixels based on color similarity without semantic understanding.
@@ -29,7 +29,7 @@ The classical GMM-based segmentation shows poor performance, as evidenced both v
 
 ---
 
-### 2. YOLO-Seg (YOLO11x)
+### 1.2 YOLO-Seg (YOLO11x)
 
 **Method Overview:**
 YOLO11x-seg is a state-of-the-art deep learning model for instance segmentation, fine-tuned on 200 face images from CelebAMask-HQ. The method uses transfer learning from COCO-pretrained weights (145MB model, extra-large variant) and requires converting masks to YOLO polygon format for training, then back to pixel masks for evaluation.
@@ -60,7 +60,7 @@ YOLO11x-seg achieved good performance with real-time inference speed (45 FPS). T
 
 ---
 
-### 3. BiSeNet (Pretrained)
+### 1.3 BiSeNet (Pretrained)
 
 **Method Overview:**
 BiSeNet (Bilateral Segmentation Network) is a pretrained deep learning model specifically designed for real-time face parsing. It combines a Spatial Path for preserving fine details with a Context Path (ResNet18 backbone) for semantic understanding, fused through an attention-based Feature Fusion Module. The model is pretrained on CelebAMask-HQ dataset with 30,000 images and requires no additional training.
@@ -87,7 +87,7 @@ BiSeNet achieves excellent performance with real-time inference speed (127 FPS),
 
 ---
 
-### 4. SAM (Automatic Segmentation)
+### 1.4 SAM (Automatic Segmentation)
 
 **Method Overview:**
 SAM (Segment Anything Model) performs unsupervised region discovery using automatic mask generation. Unlike semantic segmentation models, SAM finds visually distinct regions without predefined labels by sampling a 20×20 grid of point prompts and applying Non-Maximum Suppression to identify unique regions.
@@ -176,58 +176,62 @@ SAM's low metrics are expected and don't indicate failure - they reflect a funda
 
 ## Part 2: Face Matching and Morphing
 
-This section presents face matching experiments comparing classical keypoint-based methods (ORB, SIFT) with modern deep learning approaches (MediaPipe Face Mesh), followed by face morphing using landmark correspondences.
-
-### 1. ORB (Oriented FAST and Rotated BRIEF)
+### 2.1 ORB (Oriented FAST and Rotated BRIEF)
 
 **Method Overview:**
 ORB is a fast binary feature descriptor combining FAST keypoint detection with BRIEF descriptors. It uses Hamming distance matching with Lowe's ratio test and RANSAC for outlier filtering. ORB is rotation-invariant and designed for real-time applications.
 
 **Visual Results:**
 
-![Face Matching Comparison](media/all_methods_comparison.png)
+![ORB Inlier Matches](media/orb_inlier_matches.png)
 
 **Analysis:**
 
-ORB detected 1,919 keypoints but found only 3 inlier matches after RANSAC filtering on the test face pair (images 7.jpg and 169.jpg). Classical keypoint detectors struggle with faces because they rely on texture-based features like corners and edges, which are sparse on smooth skin regions. Keypoints cluster around high-texture areas (eyes, nose, mouth, hair) rather than distributing evenly across facial features. The resulting alignment RMSE of 227.95 pixels indicates poor geometric correspondence between the matched points, as faces lack sufficient distinctive texture for reliable keypoint matching. While ORB is extremely fast (0.014s), its low match count makes it unsuitable for face-specific applications. The method is best suited for general object tracking and SLAM applications where texture is abundant.
+ORB successfully matches keypoints between sequential frames of the same person (frames 0001_0001 and 0001_0005), demonstrating its effectiveness for same-object tracking. The method detected 954 keypoints with 36 robust inliers surviving RANSAC filtering, achieving good alignment (RMSE: 2.55 pixels). Classical keypoint detectors leverage texture-based features around eyes, nose, mouth, and glasses to establish correspondence despite expression changes (neutral to smiling). ORB's binary descriptors enable very fast matching, making it suitable for real-time tracking applications. However, the method is fundamentally limited to same-person/same-object scenarios - it cannot provide semantic correspondence across different identities or on smooth facial regions. This makes ORB unsuitable for cross-identity face matching or morphing applications, where dense semantic landmark methods are required.
 
 **Key Strengths:**
-- Very fast inference (0.014s)
-- Rotation invariant
+- Very fast inference
+- Good alignment for same-person tracking (RMSE: 2.55 pixels)
 - Low computational cost (binary descriptors)
 - Real-time capable
+- Handles expression changes well (36 robust matches)
 
 **Limitations:**
-- Very few matches on faces (only 3 inliers)
-- Poor alignment accuracy (RMSE: 227.95 pixels)
-- Requires texture-rich regions
-- Not designed for faces
+- Limited to same-person/same-object scenarios
+- Cannot match across different identities
+- Requires texture-rich regions (eyes, nose, glasses)
+- Sparse keypoints insufficient for dense applications
 
 ---
 
-### 2. SIFT (Scale-Invariant Feature Transform)
+### 2.2 SIFT (Scale-Invariant Feature Transform)
 
 **Method Overview:**
 SIFT uses gradient-based descriptors with FLANN matching for keypoint correspondence. It provides scale and rotation invariance through Gaussian pyramid detection and dominant orientation assignment. SIFT uses L2 distance with Lowe's ratio test (threshold 0.7) and RANSAC for robust matching.
 
+**Visual Results:**
+
+![SIFT Inlier Matches](media/sift_inlier_matches.png)
+
 **Analysis:**
 
-SIFT detected 691 keypoints but found 0 inlier matches after RANSAC on the test face pair. This complete failure demonstrates that classical keypoint methods are fundamentally ill-suited for face matching tasks. SIFT's scale-invariance advantage is irrelevant when faces lack the distinctive texture patterns the algorithm expects to find. The method is 18x slower than ORB (0.26s vs 0.014s) while producing no usable matches. Although SIFT performs well for textured objects like buildings or natural scenes, smooth facial skin provides insufficient gradient information for reliable descriptor matching. The algorithm's computational cost comes from multi-scale Gaussian pyramid processing and float descriptor matching, making it impractical for real-time face applications even if match quality were acceptable.
+SIFT successfully matches keypoints between sequential frames of the same person, achieving excellent alignment accuracy. The method detected 375 keypoints with 23 high-quality inliers surviving RANSAC, delivering strong geometric precision (RMSE: 2.47 pixels). SIFT's gradient-based descriptors prove robust to expression changes, finding reliable matches on textured facial features despite variations from neutral to smiling poses. The multi-scale pyramid approach ensures scale invariance, though at computational cost. While SIFT excels at same-person tracking with good geometric accuracy, it shares ORB's fundamental limitation: the method cannot establish semantic correspondence across different identities. The expensive float descriptors and pyramid processing make SIFT slower than ORB, and sparse keypoints provide insufficient coverage for dense face-specific tasks like morphing or detailed expression transfer.
 
 **Key Strengths:**
+- Good geometric accuracy (RMSE: 2.47 pixels)
 - Scale and rotation invariant
-- Robust descriptors for textured objects
+- Robust to expression changes (23 reliable matches)
 - Well-established algorithm
 
 **Limitations:**
-- Zero matches on faces
-- Much slower than ORB (0.26s)
-- Expensive float descriptors
-- Completely fails on smooth facial regions
+- Slower than ORB
+- Limited to same-person tracking
+- Expensive float descriptors and pyramid processing
+- Cannot match across different identities
 
 ---
 
-### 3. MediaPipe Face Mesh
+### 2.3 MediaPipe Face Mesh
 
 **Method Overview:**
 MediaPipe Face Mesh provides 478 dense facial landmarks using a neural network trained specifically for face parsing. Unlike keypoint detectors, it outputs semantic correspondences with consistent landmark ordering across images, requiring no explicit matching algorithm. The model uses TensorFlow Lite for efficient inference and provides 3D coordinates for all landmarks.
@@ -257,7 +261,33 @@ MediaPipe Face Mesh extracted 478 semantically meaningful landmarks with an alig
 
 ---
 
-### 4. Face Morphing Application
+### Methods Comparison
+
+**Visual Comparison:**
+
+![All Methods Comparison](media/all_methods_comparison.png)
+
+This comparison shows all three methods tested on the same sequential frames (0001_0001 → 0001_0005). ORB and SIFT provide sparse keypoint matches focused on texture-rich regions, while MediaPipe delivers dense semantic landmarks covering the entire face. MediaPipe's 478 landmarks (100x more than classical methods) enable comprehensive facial correspondence for applications requiring detailed geometry like morphing and expression transfer.
+
+**Quantitative Comparison:**
+
+![Metrics Comparison](media/metrics_comparison.png)
+
+| Method | Number of Matches | Alignment RMSE (pixels) | Computation Time (s) | FPS |
+|--------|------------------|------------------------|---------------------|-----|
+| ORB | 36 | 27.72 | 0.006 | 166.6 |
+| SIFT | 20 | 31.21 | 0.053 | 18.8 |
+| MediaPipe | 478 | 11.14 | 0.084 | 11.8 |
+
+**Key Findings:**
+- **Coverage**: MediaPipe provides 13x more correspondences than ORB and 24x more than SIFT
+- **Speed**: ORB is fastest (166.6 FPS), followed by SIFT (18.8 FPS), then MediaPipe (11.8 FPS)
+- **Accuracy**: MediaPipe achieves best alignment (11.14 RMSE), outperforming ORB (27.72) and SIFT (31.21)
+- **Use Case**: ORB/SIFT excel at sparse tracking, MediaPipe enables dense facial applications
+
+---
+
+### 2.4 Face Morphing Application
 
 **Method Overview:**
 Face morphing uses MediaPipe landmarks to create smooth transitions between two faces through Delaunay triangulation and affine warping. The method interpolates landmark positions, applies triangle-wise warping, and blends warped images using alpha blending to generate a morph sequence.
